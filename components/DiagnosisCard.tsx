@@ -8,19 +8,15 @@ function SeverityMeter({ severity }: { severity: Severity }) {
 
   return (
     <span className="flex items-center gap-2">
-      <span
-        aria-hidden="true"
-        className="flex items-end gap-[3px]"
-        data-severity={severity}
-      >
+      <span aria-hidden="true" className="flex items-end gap-[3px]">
         {[1, 2, 3].map((bar) => (
           <span
             key={bar}
             className={cn(
-              "w-[3px] rounded-full transition-colors",
-              bar === 1 && "h-2",
-              bar === 2 && "h-3",
-              bar === 3 && "h-4",
+              "w-[3px] rounded-full",
+              bar === 1 && "h-1.5",
+              bar === 2 && "h-2.5",
+              bar === 3 && "h-3.5",
               bar <= level
                 ? severity === "high"
                   ? "bg-destructive"
@@ -39,23 +35,20 @@ export function DiagnosisCard({ diagnosis }: { diagnosis: Diagnosis }) {
   return (
     <section
       aria-labelledby="diagnosis-heading"
-      className="bg-card overflow-hidden rounded-xl ring-1 ring-foreground/10"
+      className="panel animate-rise overflow-hidden"
     >
-      <div className="border-border/70 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b px-5 py-3.5 sm:px-6">
-        <h2
-          id="diagnosis-heading"
-          className="eyebrow text-muted-foreground flex items-center gap-2"
-        >
-          Diagnosis
+      <div className="panel-inset border-border/70 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b px-4 py-2.5 sm:px-5">
+        <h2 id="diagnosis-heading" className="eyebrow text-muted-foreground">
+          Incident analysis
         </h2>
 
-        <dl className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        <dl className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <div className="flex items-center gap-2">
-            <dt className="eyebrow text-muted-foreground">Category</dt>
-            <dd className="text-sm font-semibold">{diagnosis.category}</dd>
+            <dt className="eyebrow text-muted-foreground/70">Category</dt>
+            <dd className="mono-meta font-semibold">{diagnosis.category}</dd>
           </div>
           <div className="flex items-center gap-2">
-            <dt className="eyebrow text-muted-foreground">Severity</dt>
+            <dt className="eyebrow text-muted-foreground/70">Severity</dt>
             <dd>
               <SeverityMeter severity={diagnosis.severity} />
             </dd>
@@ -63,7 +56,7 @@ export function DiagnosisCard({ diagnosis }: { diagnosis: Diagnosis }) {
         </dl>
       </div>
 
-      <p className="max-w-[68ch] px-5 py-5 text-[0.9375rem] leading-[1.65] text-pretty sm:px-6">
+      <p className="max-w-[68ch] px-4 py-4 text-[0.9375rem] leading-[1.65] text-pretty sm:px-5">
         {diagnosis.summary}
       </p>
     </section>

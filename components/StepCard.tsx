@@ -19,7 +19,7 @@ const RESULT_ACTIONS: {
   icon: typeof CheckCircle2;
 }[] = [
   { result: "success", label: "It worked", icon: CheckCircle2 },
-  { result: "failure", label: "Didn't work", icon: XCircle },
+  { result: "failure", label: "It failed", icon: XCircle },
   { result: "unsure", label: "Not sure", icon: CircleHelp },
 ];
 
@@ -48,41 +48,25 @@ export function StepCard({
   return (
     <section
       aria-labelledby="step-heading"
-      className="bg-card surface-raised animate-rise ring-primary/25 overflow-hidden rounded-xl ring-1"
+      className="panel-raised animate-rise overflow-hidden"
     >
-      <div aria-hidden="true" className="bg-primary h-[3px] w-full" />
+      <div aria-hidden="true" className="bg-primary h-0.5 w-full" />
 
-      <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <p className="eyebrow text-primary">Do this now</p>
-          <div className="flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="flex items-center gap-1"
-              data-step={stepNumber}
-            >
-              {Array.from({ length: stepNumber }, (_, index) => (
-                <span
-                  key={index}
-                  className={cn(
-                    "h-1.5 rounded-full transition-all",
-                    index === stepNumber - 1
-                      ? "bg-primary w-5"
-                      : "bg-foreground/20 w-1.5",
-                  )}
-                />
-              ))}
-            </span>
-            <span className="text-muted-foreground tabular eyebrow">
-              Step {stepNumber}
-            </span>
-          </div>
-        </div>
+      <div className="panel-inset border-border/70 flex items-center justify-between gap-3 border-b px-4 py-2.5 sm:px-5">
+        <p className="eyebrow text-primary flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="bg-primary inline-block size-1.5 rounded-full"
+          />
+          Recommended action
+        </p>
+        <span className="mono-meta text-muted-foreground">
+          Step {String(stepNumber).padStart(2, "0")}
+        </span>
+      </div>
 
-        <h2
-          id="step-heading"
-          className="text-section font-bold text-balance"
-        >
+      <div className="space-y-4 px-4 py-5 sm:px-5">
+        <h2 id="step-heading" className="text-section font-bold text-balance">
           {step.title}
         </h2>
 
@@ -90,25 +74,25 @@ export function StepCard({
           {step.instruction}
         </p>
 
-        <div className="bg-muted/50 border-border/70 rounded-lg border px-4 py-3">
-          <p className="eyebrow text-muted-foreground mb-1">What to look for</p>
-          <p className="max-w-[68ch] text-sm leading-[1.6] text-pretty">
+        <div className="border-border/70 border-l-2 pl-3.5">
+          <p className="eyebrow text-muted-foreground/80 mb-1">
+            What to look for
+          </p>
+          <p className="text-muted-foreground max-w-[68ch] text-sm leading-[1.55] text-pretty">
             {step.expected_signal}
           </p>
         </div>
 
         {step.safe ? (
-          <p className="text-muted-foreground flex items-center gap-2 text-sm">
+          <p className="text-muted-foreground/80 flex items-center gap-1.5 text-xs">
             <ShieldCheck aria-hidden="true" className="size-3.5 shrink-0" />
-            Read-only check — it does not change your system configuration.
+            Read-only check — it does not change your configuration.
           </p>
         ) : null}
       </div>
 
-      <div className="border-border/70 bg-muted/40 space-y-3 border-t px-5 py-4 sm:px-6">
-        <p className="text-muted-foreground text-sm">
-          Once you have tried it, report what happened:
-        </p>
+      <div className="panel-inset border-border/70 space-y-2.5 border-t px-4 py-3.5 sm:px-5">
+        <p className="eyebrow text-muted-foreground">What happened?</p>
         <div className="grid gap-2 sm:grid-cols-3">
           {RESULT_ACTIONS.map(({ result, label, icon: Icon }) => (
             <Button
@@ -118,7 +102,10 @@ export function StepCard({
               variant={result === "success" ? "default" : "outline"}
               disabled={disabled}
               onClick={() => handleClick(result)}
-              className="w-full transition-[transform,box-shadow] duration-150 motion-safe:hover:-translate-y-px"
+              className={cn(
+                "w-full transition-[transform,box-shadow] duration-150",
+                "motion-safe:hover:-translate-y-px",
+              )}
             >
               {pending && pressed === result ? (
                 <Loader2 aria-hidden="true" className="animate-spin" />

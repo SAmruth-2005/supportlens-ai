@@ -6,12 +6,12 @@ import Link from "next/link";
 import {
   ArrowRight,
   ImagePlus,
-  Loader2,
   ShieldCheck,
   TriangleAlert,
   X,
 } from "lucide-react";
 
+import { AnalysisState } from "@/components/AnalysisState";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,9 @@ import {
   prepareScreenshot,
 } from "@/lib/image";
 import { analyzeRequestSchema } from "@/lib/schemas";
+import { cn } from "@/lib/utils";
+
+const MAX_CHARS = 2000;
 
 export function IssueInput() {
   const router = useRouter();
@@ -103,29 +106,45 @@ export function IssueInput() {
     }
   }
 
+  const overLimit = issueText.length > MAX_CHARS;
+
+  if (pending) {
+    return <AnalysisState hasScreenshot={Boolean(screenshot)} />;
+  }
+
   return (
     <div className="space-y-5">
       <form onSubmit={handleSubmit} noValidate>
-        <div className="bg-card surface-raised focus-within:ring-primary/30 overflow-hidden rounded-xl ring-1 ring-foreground/10 transition-shadow duration-200 focus-within:ring-2">
-          <label htmlFor="issue" className="sr-only">
-            Describe the problem
-          </label>
+        <div className="panel-raised focus-within:ring-primary/35 overflow-hidden transition-shadow duration-200 focus-within:ring-2">
+          <div className="panel-inset border-border/70 flex items-center justify-between gap-3 border-b px-4 py-2.5">
+            <label htmlFor="issue" className="eyebrow text-muted-foreground">
+              Describe the IT issue
+            </label>
+            <span
+              className={cn(
+                "mono-meta tabular",
+                overLimit ? "text-destructive" : "text-muted-foreground/70",
+              )}
+            >
+              {issueText.length}/{MAX_CHARS}
+            </span>
+          </div>
+
           <Textarea
             id="issue"
             name="issue"
             rows={5}
             value={issueText}
             onChange={(event) => setIssueText(event.target.value)}
-            disabled={pending}
-            placeholder="Describe the problem. For example: I can browse public websites, but I cannot open one internal company application."
+            placeholder="My laptop connects to Wi-Fi but internal sites time out, while public websites load normally…"
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? "issue-error" : "issue-hint"}
-            className="min-h-36 resize-none rounded-none border-0 bg-transparent px-5 py-4 text-base leading-[1.6] shadow-none ring-0 focus-visible:ring-0 sm:min-h-40"
+            className="min-h-36 resize-none rounded-none border-0 bg-transparent px-4 py-4 text-base leading-[1.6] shadow-none ring-0 focus-visible:ring-0 sm:min-h-40"
           />
 
           {screenshot ? (
-            <div className="border-border/70 mx-5 mb-4 flex items-center gap-3 rounded-lg border p-2.5">
-              {/* Local preview only — the image is never returned by the server. */}
+            <div className="border-border/70 animate-rise mx-4 mb-4 flex items-center gap-3 rounded-lg border p-2.5">
+              {/* Local preview only — the server never returns the image. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={screenshot.preview_url}
@@ -136,8 +155,8 @@ export function IssueInput() {
                 <p className="truncate text-sm font-semibold">
                   Screenshot attached
                 </p>
-                <p className="text-muted-foreground tabular text-xs">
-                  {screenshot.width} × {screenshot.height}
+                <p className="mono-meta text-muted-foreground">
+                  {screenshot.width}×{screenshot.height} · JPEG
                 </p>
               </div>
               <Button
@@ -145,7 +164,6 @@ export function IssueInput() {
                 variant="ghost"
                 size="icon-sm"
                 onClick={removeScreenshot}
-                disabled={pending}
                 aria-label="Remove screenshot"
               >
                 <X aria-hidden="true" />
@@ -153,14 +171,13 @@ export function IssueInput() {
             </div>
           ) : null}
 
-          <div className="border-border/70 bg-muted/40 flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3">
+          <div className="panel-inset border-border/70 flex flex-wrap items-center justify-between gap-3 border-t px-3 py-3">
             <input
               ref={fileInputRef}
               id="screenshot"
               type="file"
               accept={ACCEPTED_IMAGE_TYPES.join(",")}
               onChange={handleFileChange}
-              disabled={pending}
               className="sr-only"
               aria-describedby={
                 imageError ? "screenshot-error" : "screenshot-hint"
@@ -170,34 +187,23 @@ export function IssueInput() {
               type="button"
               variant="ghost"
               size="sm"
-              disabled={pending}
               onClick={() => fileInputRef.current?.click()}
               className="text-muted-foreground hover:text-foreground"
             >
               <ImagePlus aria-hidden="true" />
-              {screenshot ? "Replace screenshot" : "Attach a screenshot"}
+              {screenshot ? "Replace screenshot" : "Attach screenshot"}
             </Button>
 
             <Button
               type="submit"
               size="xl"
-              disabled={pending}
-              className="group/cta w-full transition-[transform,box-shadow] duration-150 sm:ml-auto sm:w-auto motion-safe:hover:-translate-y-px hover:shadow-[0_8px_20px_-8px_var(--primary)]"
+              className="group/cta w-full transition-[transform,box-shadow] duration-150 sm:w-auto motion-safe:hover:-translate-y-px hover:shadow-[0_8px_20px_-8px_var(--primary)]"
             >
-              {pending ? (
-                <>
-                  <Loader2 aria-hidden="true" className="animate-spin" />
-                  Analysing
-                </>
-              ) : (
-                <>
-                  Start diagnosis
-                  <ArrowRight
-                    aria-hidden="true"
-                    className="transition-transform duration-150 motion-safe:group-hover/cta:translate-x-0.5"
-                  />
-                </>
-              )}
+              Start diagnosis
+              <ArrowRight
+                aria-hidden="true"
+                className="transition-transform duration-150 motion-safe:group-hover/cta:translate-x-0.5"
+              />
             </Button>
           </div>
         </div>
@@ -219,12 +225,12 @@ export function IssueInput() {
           ) : null}
           <p
             id="issue-hint"
-            className="text-muted-foreground flex items-start gap-1.5 text-sm"
+            className="text-muted-foreground flex items-start gap-1.5 text-xs leading-[1.5]"
           >
             <ShieldCheck aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
             <span id="screenshot-hint">
-              Screenshots are analysed and never stored. Never include passwords
-              or API keys.
+              PNG, JPEG or WebP up to 2 MB. Screenshots are analysed and never
+              stored — check yours shows no passwords or keys.
             </span>
           </p>
         </div>
@@ -233,26 +239,39 @@ export function IssueInput() {
       {failure ? (
         <Alert className="animate-rise">
           <TriangleAlert aria-hidden="true" />
-          <AlertTitle>Analysis unavailable</AlertTitle>
+          <AlertTitle>Analysis service unavailable</AlertTitle>
           <AlertDescription>
-            {failure} You can still open a worked example below to see the full
-            troubleshooting flow.
+            {failure} Your description has been kept — retry, or open a worked
+            example below to see the full troubleshooting flow.
           </AlertDescription>
         </Alert>
       ) : null}
 
-      <section
-        aria-labelledby="examples"
-        className="flex flex-wrap items-center gap-x-3 gap-y-2"
-      >
-        <h2 id="examples" className="eyebrow text-muted-foreground">
-          Try an example
-        </h2>
+      <section aria-labelledby="examples" className="space-y-2.5">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 id="examples" className="eyebrow text-muted-foreground">
+            Try a worked example
+          </h2>
+          <p className="text-muted-foreground text-xs">
+            Seeded walkthroughs — not live analysis
+          </p>
+        </div>
         <ul className="flex flex-wrap gap-2">
           {DEMO_SCENARIOS.map((scenario) => (
             <li key={scenario.id}>
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/session/${scenario.id}`}>{scenario.label}</Link>
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="transition-colors duration-150"
+              >
+                <Link href={`/session/${scenario.id}`}>
+                  <span
+                    aria-hidden="true"
+                    className="bg-muted-foreground/40 size-1.5 rounded-full"
+                  />
+                  {scenario.label}
+                </Link>
               </Button>
             </li>
           ))}

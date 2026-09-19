@@ -8,14 +8,14 @@ import type { SessionStatus } from "@/types/supportlens";
 const OUTCOME = {
   resolved: {
     icon: CheckCircle2,
-    eyebrow: "Resolved",
+    eyebrow: "Incident resolved",
     heading: "This looks sorted",
     accent: true,
   },
   escalated: {
     icon: LifeBuoy,
     eyebrow: "Escalation recommended",
-    heading: "This needs someone with deeper access",
+    heading: "Hand this to a support specialist",
     accent: false,
   },
   unsolved: {
@@ -29,6 +29,8 @@ const OUTCOME = {
 export interface ResolutionCardProps {
   status: Exclude<SessionStatus, "active">;
   resolution: string | null;
+  /** Number of checks the user actually answered. */
+  completedSteps: number;
   /** Demo sessions offer a re-run so the walkthrough can be shown again. */
   restartHref?: string;
 }
@@ -36,6 +38,7 @@ export interface ResolutionCardProps {
 export function ResolutionCard({
   status,
   resolution,
+  completedSteps,
   restartHref,
 }: ResolutionCardProps) {
   const { icon: Icon, eyebrow, heading, accent } = OUTCOME[status];
@@ -43,53 +46,55 @@ export function ResolutionCard({
   return (
     <section
       aria-labelledby="resolution-heading"
-      className={cn(
-        "bg-card surface-raised animate-rise overflow-hidden rounded-xl ring-1",
-        accent ? "ring-primary/25" : "ring-foreground/10",
-      )}
+      className="panel-raised animate-rise overflow-hidden"
     >
       <div
         aria-hidden="true"
-        className={cn("h-[3px] w-full", accent ? "bg-primary" : "bg-border")}
+        className={cn("h-0.5 w-full", accent ? "bg-primary" : "bg-border")}
       />
 
-      <div className="space-y-4 px-5 py-6 sm:px-6 sm:py-7">
+      <div className="panel-inset border-border/70 flex items-center justify-between gap-3 border-b px-4 py-2.5 sm:px-5">
+        <p
+          className={cn(
+            "eyebrow",
+            accent ? "text-primary" : "text-muted-foreground",
+          )}
+        >
+          {eyebrow}
+        </p>
+        <span className="mono-meta text-muted-foreground">
+          {completedSteps} {completedSteps === 1 ? "check" : "checks"}
+        </span>
+      </div>
+
+      <div className="flex gap-4 px-4 py-5 sm:px-5">
         <span
           className={cn(
-            "flex size-11 items-center justify-center rounded-full",
+            "flex size-9 shrink-0 items-center justify-center rounded-full",
             accent ? "bg-primary/10 text-primary" : "bg-muted text-foreground",
           )}
         >
-          <Icon aria-hidden="true" className="size-5" />
+          <Icon aria-hidden="true" className="size-4.5" />
         </span>
 
-        <div className="space-y-2">
-          <p
-            className={cn(
-              "eyebrow",
-              accent ? "text-primary" : "text-muted-foreground",
-            )}
-          >
-            {eyebrow}
-          </p>
+        <div className="min-w-0 space-y-2">
           <h2
             id="resolution-heading"
             className="text-section font-bold text-balance"
           >
             {heading}
           </h2>
+          {resolution ? (
+            <p className="text-muted-foreground max-w-[68ch] text-[0.9375rem] leading-[1.6] text-pretty">
+              {resolution}
+            </p>
+          ) : null}
         </div>
-
-        {resolution ? (
-          <p className="max-w-[68ch] text-[0.9375rem] leading-[1.65] text-pretty">
-            {resolution}
-          </p>
-        ) : null}
       </div>
 
-      <div className="border-border/70 bg-muted/40 flex flex-wrap gap-2 border-t px-5 py-4 sm:px-6">
+      <div className="panel-inset border-border/70 flex flex-wrap gap-2 border-t px-4 py-3.5 sm:px-5">
         <Button asChild size="lg">
-          <Link href="/">Start a new diagnosis</Link>
+          <Link href="/">Start a new investigation</Link>
         </Button>
         {restartHref ? (
           <Button asChild variant="outline" size="lg">

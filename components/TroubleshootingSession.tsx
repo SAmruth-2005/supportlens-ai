@@ -60,7 +60,8 @@ export function TroubleshootingSessionView({
   }
 
   return (
-    <div className="space-y-6">
+    // Order matters on mobile: diagnosis, then the action, then the history.
+    <div className="space-y-4">
       {session.diagnosis ? (
         <DiagnosisCard diagnosis={session.diagnosis} />
       ) : null}
@@ -74,7 +75,7 @@ export function TroubleshootingSessionView({
       ) : null}
 
       {current ? (
-        // Keyed so the step's own transient state resets on each new step.
+        // Keyed so the step's transient state resets on each new step.
         <StepCard
           key={current.step.id}
           step={current.step}
@@ -86,11 +87,12 @@ export function TroubleshootingSessionView({
         <ResolutionCard
           status={session.status === "active" ? "unsolved" : session.status}
           resolution={session.final_resolution}
+          completedSteps={answered.length}
           restartHref={restartHref}
         />
       )}
 
-      <SessionTimeline steps={answered} />
+      <SessionTimeline steps={session.steps} status={session.status} />
 
       {session.diagnosis ? (
         <CausesList causes={session.diagnosis.likely_causes} />

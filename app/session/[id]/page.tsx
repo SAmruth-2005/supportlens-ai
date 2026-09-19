@@ -3,11 +3,17 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 import { TroubleshootingSessionView } from "@/components/TroubleshootingSession";
-import { Badge } from "@/components/ui/badge";
 import { loadOrSeedSession, resetDemoSession } from "@/lib/engine/bootstrap";
 
 // Sessions are mutable in-memory state, so this page cannot be prerendered.
 export const dynamic = "force-dynamic";
+
+const STATUS_LABEL = {
+  active: "Investigating",
+  resolved: "Resolved",
+  escalated: "Escalated",
+  unsolved: "Unresolved",
+} as const;
 
 export default async function SessionPage({
   params,
@@ -25,23 +31,40 @@ export default async function SessionPage({
   if (!session) notFound();
 
   return (
-    <div className="mx-auto w-full max-w-[1100px] px-5 py-8 sm:px-8 sm:py-12">
-      <div className="mx-auto max-w-[46rem] space-y-6">
+    <div className="mx-auto w-full max-w-[1100px] px-5 py-6 sm:px-8 sm:py-10">
+      <div className="mx-auto max-w-[46rem] space-y-5">
         <Link
           href="/"
           className="text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex items-center gap-1.5 rounded-md text-sm font-medium transition-colors focus-visible:ring-[3px] focus-visible:outline-none"
         >
           <ArrowLeft aria-hidden="true" className="size-3.5" />
-          New diagnosis
+          New investigation
         </Link>
 
         <header className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="eyebrow text-muted-foreground">
-              Troubleshooting session
-            </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <p className="eyebrow text-muted-foreground">Incident</p>
+            <span
+              className={
+                session.status === "active"
+                  ? "mono-meta text-primary flex items-center gap-1.5"
+                  : "mono-meta text-muted-foreground flex items-center gap-1.5"
+              }
+            >
+              <span
+                aria-hidden="true"
+                className={
+                  session.status === "active"
+                    ? "bg-primary size-1.5 rounded-full"
+                    : "bg-muted-foreground/50 size-1.5 rounded-full"
+                }
+              />
+              {STATUS_LABEL[session.status]}
+            </span>
             {session.is_demo ? (
-              <Badge variant="secondary">Demo scenario</Badge>
+              <span className="mono-meta text-muted-foreground/70 border-border rounded-full border px-2 py-0.5">
+                Demo scenario
+              </span>
             ) : null}
           </div>
 
@@ -50,10 +73,9 @@ export default async function SessionPage({
           </h1>
 
           {session.is_demo ? (
-            <p className="text-muted-foreground text-sm leading-[1.6] text-pretty">
-              A seeded walkthrough used to demonstrate the workflow. The
-              branching below is real; the initial diagnosis is not live model
-              output.
+            <p className="text-muted-foreground text-xs leading-[1.55] text-pretty">
+              A seeded walkthrough. The branching below is the real engine; the
+              initial diagnosis is not live model output.
             </p>
           ) : null}
         </header>
