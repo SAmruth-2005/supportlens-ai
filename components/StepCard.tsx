@@ -1,9 +1,16 @@
 "use client";
 
-import { CheckCircle2, CircleHelp, ShieldCheck, XCircle } from "lucide-react";
+import { useState } from "react";
+import {
+  CheckCircle2,
+  CircleHelp,
+  Loader2,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import type { StepResult, TroubleshootingStep } from "@/types/supportlens";
 
 const RESULT_ACTIONS: {
@@ -30,61 +37,99 @@ export function StepCard({
   onResult,
   pending = false,
 }: StepCardProps) {
+  const [pressed, setPressed] = useState<StepResult | null>(null);
   const disabled = !onResult || pending;
 
+  function handleClick(result: StepResult) {
+    setPressed(result);
+    onResult?.(result);
+  }
+
   return (
-    <Card className="border-primary/30 shadow-lg">
-      <CardHeader className="gap-3">
-        <span className="text-primary font-mono text-[0.6875rem] tracking-[0.16em] uppercase">
-          Step {stepNumber} · do this now
-        </span>
-        <h2 className="text-2xl font-bold tracking-[-0.02em] text-balance">
+    <section
+      aria-labelledby="step-heading"
+      className="bg-card surface-raised animate-rise ring-primary/25 overflow-hidden rounded-xl ring-1"
+    >
+      <div aria-hidden="true" className="bg-primary h-[3px] w-full" />
+
+      <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <p className="eyebrow text-primary">Do this now</p>
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="flex items-center gap-1"
+              data-step={stepNumber}
+            >
+              {Array.from({ length: stepNumber }, (_, index) => (
+                <span
+                  key={index}
+                  className={cn(
+                    "h-1.5 rounded-full transition-all",
+                    index === stepNumber - 1
+                      ? "bg-primary w-5"
+                      : "bg-foreground/20 w-1.5",
+                  )}
+                />
+              ))}
+            </span>
+            <span className="text-muted-foreground tabular eyebrow">
+              Step {stepNumber}
+            </span>
+          </div>
+        </div>
+
+        <h2
+          id="step-heading"
+          className="text-section font-bold text-balance"
+        >
           {step.title}
         </h2>
-      </CardHeader>
 
-      <CardContent className="space-y-5">
-        <p className="max-w-[68ch] text-[1.0625rem] leading-[1.65] text-pretty">
+        <p className="max-w-[68ch] text-[1.0625rem] leading-[1.6] text-pretty">
           {step.instruction}
         </p>
 
-        <dl className="border-border/70 space-y-2 border-l-2 pl-4 text-sm">
-          <div className="flex flex-col gap-0.5">
-            <dt className="text-muted-foreground font-mono text-[0.6875rem] tracking-[0.16em] uppercase">
-              What to look for
-            </dt>
-            <dd className="max-w-[68ch] text-pretty">{step.expected_signal}</dd>
-          </div>
-        </dl>
+        <div className="bg-muted/50 border-border/70 rounded-lg border px-4 py-3">
+          <p className="eyebrow text-muted-foreground mb-1">What to look for</p>
+          <p className="max-w-[68ch] text-sm leading-[1.6] text-pretty">
+            {step.expected_signal}
+          </p>
+        </div>
 
         {step.safe ? (
           <p className="text-muted-foreground flex items-center gap-2 text-sm">
-            <ShieldCheck aria-hidden="true" className="size-4 shrink-0" />
-            Read-only check. It does not change your system configuration.
+            <ShieldCheck aria-hidden="true" className="size-3.5 shrink-0" />
+            Read-only check — it does not change your system configuration.
           </p>
         ) : null}
-      </CardContent>
+      </div>
 
-      <CardFooter className="flex-col items-stretch gap-3">
+      <div className="border-border/70 bg-muted/40 space-y-3 border-t px-5 py-4 sm:px-6">
         <p className="text-muted-foreground text-sm">
           Once you have tried it, report what happened:
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid gap-2 sm:grid-cols-3">
           {RESULT_ACTIONS.map(({ result, label, icon: Icon }) => (
             <Button
               key={result}
               type="button"
+              size="xl"
               variant={result === "success" ? "default" : "outline"}
               disabled={disabled}
-              onClick={() => onResult?.(result)}
-              className="transition-[transform,box-shadow] duration-150 motion-safe:hover:-translate-y-px"
+              onClick={() => handleClick(result)}
+              className="w-full transition-[transform,box-shadow] duration-150 motion-safe:hover:-translate-y-px"
             >
-              <Icon aria-hidden="true" />
+              {pending && pressed === result ? (
+                <Loader2 aria-hidden="true" className="animate-spin" />
+              ) : (
+                <Icon aria-hidden="true" />
+              )}
               {label}
             </Button>
           ))}
         </div>
-      </CardFooter>
-    </Card>
+      </div>
+    </section>
   );
 }

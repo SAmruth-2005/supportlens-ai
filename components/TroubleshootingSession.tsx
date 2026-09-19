@@ -60,15 +60,13 @@ export function TroubleshootingSessionView({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {session.diagnosis ? (
         <DiagnosisCard diagnosis={session.diagnosis} />
       ) : null}
 
-      <SessionTimeline steps={answered} />
-
       {error ? (
-        <Alert>
+        <Alert className="animate-rise">
           <TriangleAlert aria-hidden="true" />
           <AlertTitle>Could not record that result</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
@@ -76,7 +74,9 @@ export function TroubleshootingSessionView({
       ) : null}
 
       {current ? (
+        // Keyed so the step's own transient state resets on each new step.
         <StepCard
+          key={current.step.id}
           step={current.step}
           stepNumber={current.step_order}
           onResult={handleResult}
@@ -89,6 +89,8 @@ export function TroubleshootingSessionView({
           restartHref={restartHref}
         />
       )}
+
+      <SessionTimeline steps={answered} />
 
       {session.diagnosis ? (
         <CausesList causes={session.diagnosis.likely_causes} />

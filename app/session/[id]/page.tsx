@@ -1,4 +1,6 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 import { TroubleshootingSessionView } from "@/components/TroubleshootingSession";
 import { Badge } from "@/components/ui/badge";
@@ -23,19 +25,33 @@ export default async function SessionPage({
   if (!session) notFound();
 
   return (
-    <div className="mx-auto w-full max-w-[1100px] px-5 py-12 sm:px-8 sm:py-16">
-      <div className="max-w-[46rem] space-y-8">
-        <header className="space-y-4">
-          {session.is_demo ? <Badge variant="secondary">Demo scenario</Badge> : null}
-          <h1 className="text-2xl font-bold tracking-[-0.02em] text-balance sm:text-3xl">
-            Troubleshooting session
-          </h1>
-          <blockquote className="border-border/70 text-muted-foreground max-w-[68ch] border-l-2 pl-4 leading-[1.65] text-pretty">
+    <div className="mx-auto w-full max-w-[1100px] px-5 py-8 sm:px-8 sm:py-12">
+      <div className="mx-auto max-w-[46rem] space-y-6">
+        <Link
+          href="/"
+          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex items-center gap-1.5 rounded-md text-sm font-medium transition-colors focus-visible:ring-[3px] focus-visible:outline-none"
+        >
+          <ArrowLeft aria-hidden="true" className="size-3.5" />
+          New diagnosis
+        </Link>
+
+        <header className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="eyebrow text-muted-foreground">
+              Troubleshooting session
+            </p>
+            {session.is_demo ? (
+              <Badge variant="secondary">Demo scenario</Badge>
+            ) : null}
+          </div>
+
+          <h1 className="text-section font-bold text-balance">
             {session.issue_text}
-          </blockquote>
+          </h1>
+
           {session.is_demo ? (
-            <p className="text-muted-foreground text-sm">
-              This is a seeded walkthrough used to demonstrate the workflow. The
+            <p className="text-muted-foreground text-sm leading-[1.6] text-pretty">
+              A seeded walkthrough used to demonstrate the workflow. The
               branching below is real; the initial diagnosis is not live model
               output.
             </p>

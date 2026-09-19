@@ -3,7 +3,14 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, ImagePlus, Loader2, TriangleAlert, X } from "lucide-react";
+import {
+  ArrowRight,
+  ImagePlus,
+  Loader2,
+  ShieldCheck,
+  TriangleAlert,
+  X,
+} from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -97,53 +104,33 @@ export function IssueInput() {
   }
 
   return (
-    <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="space-y-3" noValidate>
-        <label htmlFor="issue" className="block text-sm font-semibold">
-          Describe the problem
-        </label>
-        <Textarea
-          id="issue"
-          name="issue"
-          rows={5}
-          value={issueText}
-          onChange={(event) => setIssueText(event.target.value)}
-          disabled={pending}
-          placeholder="For example: I can browse public websites, but I cannot open one internal company application."
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? "issue-error" : "issue-hint"}
-          className="text-base"
-        />
-        <p id="issue-hint" className="text-muted-foreground text-sm">
-          Include what you expected, what happened instead, and any error text
-          you can see. Never paste passwords or API keys.
-        </p>
-        {error ? (
-          <p id="issue-error" role="alert" className="text-destructive text-sm">
-            {error}
-          </p>
-        ) : null}
-
-        <div className="space-y-2">
-          <input
-            ref={fileInputRef}
-            id="screenshot"
-            type="file"
-            accept={ACCEPTED_IMAGE_TYPES.join(",")}
-            onChange={handleFileChange}
+    <div className="space-y-5">
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="bg-card surface-raised focus-within:ring-primary/30 overflow-hidden rounded-xl ring-1 ring-foreground/10 transition-shadow duration-200 focus-within:ring-2">
+          <label htmlFor="issue" className="sr-only">
+            Describe the problem
+          </label>
+          <Textarea
+            id="issue"
+            name="issue"
+            rows={5}
+            value={issueText}
+            onChange={(event) => setIssueText(event.target.value)}
             disabled={pending}
-            className="sr-only"
-            aria-describedby={imageError ? "screenshot-error" : "screenshot-hint"}
+            placeholder="Describe the problem. For example: I can browse public websites, but I cannot open one internal company application."
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? "issue-error" : "issue-hint"}
+            className="min-h-36 resize-none rounded-none border-0 bg-transparent px-5 py-4 text-base leading-[1.6] shadow-none ring-0 focus-visible:ring-0 sm:min-h-40"
           />
 
           {screenshot ? (
-            <div className="border-border/70 flex items-center gap-3 rounded-lg border p-3">
-              {/* Local preview only — never uploaded back from the server. */}
+            <div className="border-border/70 mx-5 mb-4 flex items-center gap-3 rounded-lg border p-2.5">
+              {/* Local preview only — the image is never returned by the server. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={screenshot.preview_url}
                 alt="Screenshot you attached"
-                className="border-border/70 size-14 rounded-md border object-cover"
+                className="border-border/70 size-11 shrink-0 rounded-md border object-cover"
               />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">
@@ -156,31 +143,71 @@ export function IssueInput() {
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="icon-sm"
                 onClick={removeScreenshot}
                 disabled={pending}
+                aria-label="Remove screenshot"
               >
                 <X aria-hidden="true" />
-                Remove
               </Button>
             </div>
-          ) : (
+          ) : null}
+
+          <div className="border-border/70 bg-muted/40 flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3">
+            <input
+              ref={fileInputRef}
+              id="screenshot"
+              type="file"
+              accept={ACCEPTED_IMAGE_TYPES.join(",")}
+              onChange={handleFileChange}
+              disabled={pending}
+              className="sr-only"
+              aria-describedby={
+                imageError ? "screenshot-error" : "screenshot-hint"
+              }
+            />
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
               disabled={pending}
               onClick={() => fileInputRef.current?.click()}
+              className="text-muted-foreground hover:text-foreground"
             >
               <ImagePlus aria-hidden="true" />
-              Attach a screenshot
+              {screenshot ? "Replace screenshot" : "Attach a screenshot"}
             </Button>
-          )}
 
-          <p id="screenshot-hint" className="text-muted-foreground text-sm">
-            Optional. PNG, JPEG or WebP. It is sent for analysis and never
-            stored — check it shows no passwords before attaching.
-          </p>
+            <Button
+              type="submit"
+              size="xl"
+              disabled={pending}
+              className="group/cta w-full transition-[transform,box-shadow] duration-150 sm:ml-auto sm:w-auto motion-safe:hover:-translate-y-px hover:shadow-[0_8px_20px_-8px_var(--primary)]"
+            >
+              {pending ? (
+                <>
+                  <Loader2 aria-hidden="true" className="animate-spin" />
+                  Analysing
+                </>
+              ) : (
+                <>
+                  Start diagnosis
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="transition-transform duration-150 motion-safe:group-hover/cta:translate-x-0.5"
+                  />
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-3 space-y-1.5">
+          {error ? (
+            <p id="issue-error" role="alert" className="text-destructive text-sm">
+              {error}
+            </p>
+          ) : null}
           {imageError ? (
             <p
               id="screenshot-error"
@@ -190,30 +217,21 @@ export function IssueInput() {
               {imageError}
             </p>
           ) : null}
+          <p
+            id="issue-hint"
+            className="text-muted-foreground flex items-start gap-1.5 text-sm"
+          >
+            <ShieldCheck aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+            <span id="screenshot-hint">
+              Screenshots are analysed and never stored. Never include passwords
+              or API keys.
+            </span>
+          </p>
         </div>
-
-        <Button
-          type="submit"
-          size="lg"
-          disabled={pending}
-          className="transition-[transform,box-shadow] duration-150 motion-safe:hover:-translate-y-px"
-        >
-          {pending ? (
-            <>
-              <Loader2 aria-hidden="true" className="animate-spin" />
-              Analysing
-            </>
-          ) : (
-            <>
-              Start diagnosis
-              <ArrowRight aria-hidden="true" />
-            </>
-          )}
-        </Button>
       </form>
 
       {failure ? (
-        <Alert>
+        <Alert className="animate-rise">
           <TriangleAlert aria-hidden="true" />
           <AlertTitle>Analysis unavailable</AlertTitle>
           <AlertDescription>
@@ -223,12 +241,12 @@ export function IssueInput() {
         </Alert>
       ) : null}
 
-      <section aria-labelledby="examples" className="space-y-3">
-        <h2
-          id="examples"
-          className="text-muted-foreground font-mono text-[0.6875rem] tracking-[0.16em] uppercase"
-        >
-          Worked examples
+      <section
+        aria-labelledby="examples"
+        className="flex flex-wrap items-center gap-x-3 gap-y-2"
+      >
+        <h2 id="examples" className="eyebrow text-muted-foreground">
+          Try an example
         </h2>
         <ul className="flex flex-wrap gap-2">
           {DEMO_SCENARIOS.map((scenario) => (
