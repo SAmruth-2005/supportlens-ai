@@ -14,6 +14,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 import {
+  CATALOG_STEP_IDS,
   DIAGNOSIS_RESPONSE_SCHEMA,
   FALLBACK_DIAGNOSIS,
   SYSTEM_PROMPT,
@@ -253,6 +254,20 @@ function validate(
       .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
       .join("; ");
     return { ok: false, problem };
+  }
+
+  // The response schema already constrains these, but an id the engine cannot
+  // resolve must never reach it — so it is enforced here too, not assumed.
+  const unknown = [
+    result.data.first_step.id,
+    ...result.data.next_step_options.map((option) => option.next_step),
+  ].filter((id) => !CATALOG_STEP_IDS.includes(id));
+
+  if (unknown.length > 0) {
+    return {
+      ok: false,
+      problem: `Unknown step id(s): ${[...new Set(unknown)].join(", ")}. Use only the listed ids.`,
+    };
   }
 
   return { ok: true, diagnosis: result.data };

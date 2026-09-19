@@ -34,7 +34,8 @@ export const troubleshootingStepSchema = z.object({
 });
 
 export const nextStepOptionSchema = z.object({
-  result: z.string().min(1),
+  /** Must match the engine's vocabulary — the UI only ever reports these three. */
+  result: stepResultSchema,
   next_step: z.string().min(1),
 });
 

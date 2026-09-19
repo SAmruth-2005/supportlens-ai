@@ -8,8 +8,17 @@
  */
 import { Type } from "@google/genai";
 
+import { STEP_CATALOG } from "@/lib/engine/catalog";
 import type { Diagnosis } from "@/types/supportlens";
-import { ISSUE_CATEGORIES, SEVERITIES } from "@/types/supportlens";
+import { ISSUE_CATEGORIES, SEVERITIES, STEP_RESULTS } from "@/types/supportlens";
+
+/**
+ * The step vocabulary the model may choose from.
+ *
+ * Derived from STEP_CATALOG so the catalog stays the single source of truth —
+ * adding a step there makes it selectable here with no change to this file.
+ */
+export const CATALOG_STEP_IDS = Object.keys(STEP_CATALOG);
 
 /** docs/SUPPORTLENS_AI_PROMPTS.md §1 — global system prompt. */
 export const SYSTEM_PROMPT = `You are SupportLens AI, an interactive IT troubleshooting assistant.
@@ -65,9 +74,17 @@ Analyse it and return JSON only.
 4. Write a short summary that reasons only from the evidence the user actually gave.
 5. Choose the single safest useful first diagnostic. It must be read-only: something that observes state rather than changing it. Set "safe" to true only if it cannot modify the user's system.
 6. Describe what result would confirm or rule out your leading hypothesis.
-7. List the branches for a "success", "failure" and "unsure" result, naming the next step id for each.
+7. List exactly three branches, one for each possible user result.
 
-Step ids are lowercase snake_case, for example "dns_check" or "vpn_status_check".
+STEP IDS — "first_step.id" and every "next_step" MUST be chosen from this list, copied exactly:
+${CATALOG_STEP_IDS.join("\n")}
+
+Pick the closest match by meaning. Do not invent a new id, do not rename one, and do not describe a step the list cannot express. If nothing fits, use "clarify".
+The title, instruction and expected_signal are yours to write for the user's situation — only the id is fixed.
+
+BRANCH RESULTS — "next_step_options[].result" MUST be exactly one of: ${STEP_RESULTS.join(", ")}.
+These are the only three buttons the user can press, so any other wording is unusable. Provide one branch for each of the three, in that order.
+
 Do not claim to have run anything yourself. Do not ask for credentials.`;
 }
 
@@ -140,7 +157,7 @@ export const DIAGNOSIS_RESPONSE_SCHEMA = {
         "safe",
       ],
       properties: {
-        id: { type: Type.STRING },
+        id: { type: Type.STRING, enum: CATALOG_STEP_IDS },
         title: { type: Type.STRING },
         instruction: { type: Type.STRING },
         expected_signal: { type: Type.STRING },
@@ -149,15 +166,15 @@ export const DIAGNOSIS_RESPONSE_SCHEMA = {
     },
     next_step_options: {
       type: Type.ARRAY,
-      minItems: "1",
-      maxItems: "4",
+      minItems: "3",
+      maxItems: "3",
       items: {
         type: Type.OBJECT,
         required: ["result", "next_step"],
         propertyOrdering: ["result", "next_step"],
         properties: {
-          result: { type: Type.STRING },
-          next_step: { type: Type.STRING },
+          result: { type: Type.STRING, enum: [...STEP_RESULTS] },
+          next_step: { type: Type.STRING, enum: CATALOG_STEP_IDS },
         },
       },
     },
