@@ -70,6 +70,15 @@ export const analyzeRequestSchema = z.object({
     .max(2000, "Please keep the description under 2000 characters."),
 });
 
+/** Inbound payload for the troubleshoot endpoint (Phase 3). */
+export const troubleshootRequestSchema = z.object({
+  session_id: z.string().trim().min(1, "A session id is required."),
+  result: stepResultSchema,
+  /** Optional guard: the step the client believes it is answering. */
+  step_id: z.string().trim().min(1).optional(),
+});
+
 export type DiagnosisInput = z.input<typeof diagnosisSchema>;
 export type Interpretation = z.infer<typeof interpretationSchema>;
 export type AnalyzeRequest = z.infer<typeof analyzeRequestSchema>;
+export type TroubleshootRequest = z.infer<typeof troubleshootRequestSchema>;

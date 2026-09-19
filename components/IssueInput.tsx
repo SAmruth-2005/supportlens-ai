@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Info } from "lucide-react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight, Loader2, TriangleAlert } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -11,13 +12,15 @@ import { DEMO_SCENARIOS } from "@/lib/demo/scenarios";
 import { analyzeRequestSchema } from "@/lib/schemas";
 
 export function IssueInput() {
+  const router = useRouter();
   const [issueText, setIssueText] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setNotice(false);
+    setFailure(null);
 
     const parsed = analyzeRequestSchema.safeParse({ issue_text: issueText });
     if (!parsed.success) {
@@ -26,8 +29,30 @@ export function IssueInput() {
     }
 
     setError(null);
-    // The analyze endpoint is wired up in the next stage of the build.
-    setNotice(true);
+    setPending(true);
+
+    try {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ issue_text: parsed.data.issue_text }),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok || !payload?.session_id) {
+        setFailure(
+          payload?.error ?? "The analysis could not be completed. Try again.",
+        );
+        return;
+      }
+
+      router.push(`/session/${payload.session_id}`);
+    } catch {
+      setFailure("Could not reach the server. Check your connection and retry.");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -42,6 +67,7 @@ export function IssueInput() {
           rows={5}
           value={issueText}
           onChange={(event) => setIssueText(event.target.value)}
+          disabled={pending}
           placeholder="For example: I can browse public websites, but I cannot open one internal company application."
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? "issue-error" : "issue-hint"}
@@ -60,21 +86,30 @@ export function IssueInput() {
         <Button
           type="submit"
           size="lg"
+          disabled={pending}
           className="transition-[transform,box-shadow] duration-150 motion-safe:hover:-translate-y-px"
         >
-          Start diagnosis
-          <ArrowRight aria-hidden="true" />
+          {pending ? (
+            <>
+              <Loader2 aria-hidden="true" className="animate-spin" />
+              Analysing
+            </>
+          ) : (
+            <>
+              Start diagnosis
+              <ArrowRight aria-hidden="true" />
+            </>
+          )}
         </Button>
       </form>
 
-      {notice ? (
+      {failure ? (
         <Alert>
-          <Info aria-hidden="true" />
-          <AlertTitle>Live analysis is not connected yet</AlertTitle>
+          <TriangleAlert aria-hidden="true" />
+          <AlertTitle>Analysis unavailable</AlertTitle>
           <AlertDescription>
-            Your description is valid and the interface is ready. The Gemini
-            analysis endpoint is the next part of the build. In the meantime,
-            open a worked example below to see the full troubleshooting flow.
+            {failure} You can still open a worked example below to see the full
+            troubleshooting flow.
           </AlertDescription>
         </Alert>
       ) : null}

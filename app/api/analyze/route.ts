@@ -4,10 +4,14 @@
  * Issue text in, validated structured diagnosis out. This is the only place the
  * browser can reach the model, and the key never leaves the server.
  */
+import { randomUUID } from "node:crypto";
+
 import { NextResponse } from "next/server";
 
+import { createSession } from "@/lib/engine";
 import { analyzeIssue } from "@/lib/gemini";
 import { analyzeRequestSchema } from "@/lib/schemas";
+import { sessionStore } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,7 +55,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Open a troubleshooting session so the workflow can be advanced from here.
+    const session = await sessionStore.create(
+      createSession({
+        id: randomUUID(),
+        issueText: parsed.data.issue_text,
+        diagnosis: outcome.diagnosis,
+      }),
+    );
+
     return NextResponse.json({
+      session_id: session.id,
       issue_text: parsed.data.issue_text,
       diagnosis: outcome.diagnosis,
       source: outcome.source,

@@ -9,7 +9,21 @@ import type { TroubleshootingSession } from "@/types/supportlens";
 
 import type { SessionStore } from "./index";
 
-const sessions = new Map<string, TroubleshootingSession>();
+/**
+ * Held on globalThis deliberately.
+ *
+ * In dev, route handlers and server components are bundled separately, so a
+ * module-level Map would give each its own copy and a session written by one
+ * would be invisible to the other. Hot reloads would also wipe it. This is the
+ * same singleton pattern used for dev database clients.
+ */
+const globalForSessions = globalThis as typeof globalThis & {
+  __supportlensSessions?: Map<string, TroubleshootingSession>;
+};
+
+const sessions: Map<string, TroubleshootingSession> =
+  globalForSessions.__supportlensSessions ??
+  (globalForSessions.__supportlensSessions = new Map());
 
 function now(): string {
   return new Date().toISOString();
