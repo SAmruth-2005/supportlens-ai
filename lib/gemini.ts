@@ -50,6 +50,13 @@ const MAX_HONOURED_RETRY_DELAY_MS = 5_000;
 /** Where a returned diagnosis came from, so the UI can label it honestly. */
 export type DiagnosisSource = "model" | "model_repaired" | "fallback";
 
+/** Optional screenshot evidence. Request-scoped only — never stored or logged. */
+export interface ScreenshotInput {
+  mimeType: string;
+  /** Base64 payload with no data: prefix. */
+  data: string;
+}
+
 export type AnalyzeOutcome =
   | {
       ok: true;
@@ -59,7 +66,7 @@ export type AnalyzeOutcome =
     }
   | {
       ok: false;
-      kind: "config" | "upstream" | "timeout";
+      kind: "config" | "upstream" | "timeout" | "invalid_image";
       message: string;
     };
 
@@ -70,8 +77,35 @@ export type AnalyzeOutcome =
  */
 function redact(value: unknown): string {
   const key = process.env.GEMINI_API_KEY;
-  const text = value instanceof Error ? value.message : String(value);
-  return key ? text.split(key).join("[REDACTED]") : text;
+  let text = value instanceof Error ? value.message : String(value);
+
+  if (key) text = text.split(key).join("[REDACTED]");
+
+  // An upstream error could echo the request. Never let image bytes reach a log.
+  text = text
+    .replace(/data:image\/[a-z+]+;base64,[A-Za-z0-9+/=]*/gi, "[IMAGE REDACTED]")
+    .replace(/[A-Za-z0-9+/]{200,}={0,2}/g, "[IMAGE REDACTED]");
+
+  return text.length > 800 ? `${text.slice(0, 800)}… [truncated]` : text;
+}
+
+/**
+ * Did the upstream reject the image itself?
+ *
+ * Only consulted when we actually sent one. A 400 alone is not enough — it has
+ * to name the media part, or we would misreport a genuine service fault as the
+ * user's mistake.
+ */
+function isInvalidImageError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+
+  const status = (error as { status?: unknown }).status;
+  const is400 = status === 400 || /"code"\s*:\s*400\b/.test(error.message);
+  if (!is400) return false;
+
+  return /image|inline_?data|media|mime|decode|corrupt|unsupported/i.test(
+    error.message,
+  );
 }
 
 function getClient(): GoogleGenAI | null {
@@ -144,15 +178,23 @@ function isTransient(error: unknown): boolean {
 async function requestJson(
   client: GoogleGenAI,
   prompt: string,
+  image?: ScreenshotInput,
 ): Promise<string> {
   const startedAt = Date.now();
   let lastError: unknown;
+
+  const contents = image
+    ? [
+        { text: prompt },
+        { inlineData: { mimeType: image.mimeType, data: image.data } },
+      ]
+    : prompt;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     try {
       const response = await client.models.generateContent({
         model: GEMINI_MODEL,
-        contents: prompt,
+        contents,
         config: {
           systemInstruction: SYSTEM_PROMPT,
           responseMimeType: "application/json",
@@ -222,7 +264,10 @@ function validate(
  * Never throws — every failure mode is returned as a value so the route can map
  * it to a status code.
  */
-export async function analyzeIssue(issueText: string): Promise<AnalyzeOutcome> {
+export async function analyzeIssue(
+  issueText: string,
+  image?: ScreenshotInput,
+): Promise<AnalyzeOutcome> {
   const client = getClient();
   if (!client) {
     return {
@@ -232,26 +277,45 @@ export async function analyzeIssue(issueText: string): Promise<AnalyzeOutcome> {
     };
   }
 
+  const hasImage = Boolean(image);
+
   // Attempt 1 — normal diagnosis.
   let first: string;
   try {
-    first = await requestJson(client, buildDiagnosisPrompt(issueText));
+    first = await requestJson(
+      client,
+      buildDiagnosisPrompt(issueText, hasImage),
+      image,
+    );
   } catch (error) {
     const isTimeout =
       error instanceof Error &&
       (error.name === "TimeoutError" || error.name === "AbortError");
     console.error("[gemini] request failed:", redact(error));
-    return isTimeout
-      ? {
-          ok: false,
-          kind: "timeout",
-          message: "The analysis took too long to respond.",
-        }
-      : {
-          ok: false,
-          kind: "upstream",
-          message: "The analysis service could not be reached.",
-        };
+
+    if (isTimeout) {
+      return {
+        ok: false,
+        kind: "timeout",
+        message: "The analysis took too long to respond.",
+      };
+    }
+
+    // Only blame the image when we actually sent one and the upstream said so.
+    if (hasImage && isInvalidImageError(error)) {
+      return {
+        ok: false,
+        kind: "invalid_image",
+        message:
+          "That screenshot could not be read. Try a different PNG, JPEG or WebP image.",
+      };
+    }
+
+    return {
+      ok: false,
+      kind: "upstream",
+      message: "The analysis service could not be reached.",
+    };
   }
 
   const firstCheck = validate(first);
@@ -267,9 +331,11 @@ export async function analyzeIssue(issueText: string): Promise<AnalyzeOutcome> {
   // Attempt 2 — one controlled repair, telling the model what was wrong.
   console.warn("[gemini] invalid output, retrying:", firstCheck.problem);
   try {
+    // The image must be re-sent, or the repair loses its evidence.
     const repaired = await requestJson(
       client,
-      buildRepairPrompt(issueText, firstCheck.problem),
+      buildRepairPrompt(issueText, firstCheck.problem, hasImage),
+      image,
     );
     const repairedCheck = validate(repaired);
     if (repairedCheck.ok) {

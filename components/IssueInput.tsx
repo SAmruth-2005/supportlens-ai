@@ -1,22 +1,53 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Loader2, TriangleAlert } from "lucide-react";
+import { ArrowRight, ImagePlus, Loader2, TriangleAlert, X } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { DEMO_SCENARIOS } from "@/lib/demo/scenarios";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  type PreparedScreenshot,
+  prepareScreenshot,
+} from "@/lib/image";
 import { analyzeRequestSchema } from "@/lib/schemas";
 
 export function IssueInput() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [issueText, setIssueText] = useState("");
+  const [screenshot, setScreenshot] = useState<PreparedScreenshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // allow re-selecting the same file
+    if (!file) return;
+
+    setImageError(null);
+    try {
+      setScreenshot(await prepareScreenshot(file));
+    } catch (cause) {
+      setScreenshot(null);
+      setImageError(
+        cause instanceof Error ? cause.message : "That image could not be used.",
+      );
+    }
+  }
+
+  function removeScreenshot() {
+    setScreenshot(null);
+    setImageError(null);
+    fileInputRef.current?.focus();
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,7 +66,17 @@ export function IssueInput() {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ issue_text: parsed.data.issue_text }),
+        body: JSON.stringify({
+          issue_text: parsed.data.issue_text,
+          ...(screenshot
+            ? {
+                screenshot: {
+                  mime_type: screenshot.mime_type,
+                  data: screenshot.data,
+                },
+              }
+            : {}),
+        }),
       });
 
       const payload = await response.json();
@@ -82,6 +123,74 @@ export function IssueInput() {
             {error}
           </p>
         ) : null}
+
+        <div className="space-y-2">
+          <input
+            ref={fileInputRef}
+            id="screenshot"
+            type="file"
+            accept={ACCEPTED_IMAGE_TYPES.join(",")}
+            onChange={handleFileChange}
+            disabled={pending}
+            className="sr-only"
+            aria-describedby={imageError ? "screenshot-error" : "screenshot-hint"}
+          />
+
+          {screenshot ? (
+            <div className="border-border/70 flex items-center gap-3 rounded-lg border p-3">
+              {/* Local preview only — never uploaded back from the server. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={screenshot.preview_url}
+                alt="Screenshot you attached"
+                className="border-border/70 size-14 rounded-md border object-cover"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">
+                  Screenshot attached
+                </p>
+                <p className="text-muted-foreground tabular text-xs">
+                  {screenshot.width} × {screenshot.height}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={removeScreenshot}
+                disabled={pending}
+              >
+                <X aria-hidden="true" />
+                Remove
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={pending}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <ImagePlus aria-hidden="true" />
+              Attach a screenshot
+            </Button>
+          )}
+
+          <p id="screenshot-hint" className="text-muted-foreground text-sm">
+            Optional. PNG, JPEG or WebP. It is sent for analysis and never
+            stored — check it shows no passwords before attaching.
+          </p>
+          {imageError ? (
+            <p
+              id="screenshot-error"
+              role="alert"
+              className="text-destructive text-sm"
+            >
+              {imageError}
+            </p>
+          ) : null}
+        </div>
 
         <Button
           type="submit"

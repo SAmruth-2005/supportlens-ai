@@ -61,13 +61,56 @@ export const interpretationSchema = z.object({
     .nullable(),
 });
 
-/** Inbound payload for the analyze endpoint (Phase 2). */
+/** Image formats accepted as screenshot evidence. */
+export const SCREENSHOT_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+] as const;
+
+/** Decoded size ceiling for a screenshot. */
+export const MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024;
+
+const BASE64_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;
+
+/**
+ * Decoded byte length of a base64 string, without allocating a buffer.
+ *
+ * Works in both the browser and on the server, so the same limit is applied on
+ * each side. The server additionally verifies the real decoded bytes.
+ */
+export function decodedByteLength(base64: string): number {
+  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+  return Math.floor((base64.length * 3) / 4) - padding;
+}
+
+export const screenshotSchema = z.object({
+  mime_type: z.enum(SCREENSHOT_MIME_TYPES),
+  data: z
+    .string()
+    .min(1, "Screenshot data is empty.")
+    .refine(
+      (value) => !value.startsWith("data:"),
+      "Send the base64 payload only, without the data: prefix.",
+    )
+    .refine(
+      (value) => value.length % 4 === 0 && BASE64_PATTERN.test(value),
+      "Screenshot data is not valid base64.",
+    )
+    .refine(
+      (value) => decodedByteLength(value) <= MAX_SCREENSHOT_BYTES,
+      "Screenshot must be 2 MB or smaller.",
+    ),
+});
+
+/** Inbound payload for the analyze endpoint (Phase 2, screenshot added in Phase 4). */
 export const analyzeRequestSchema = z.object({
   issue_text: z
     .string()
     .trim()
     .min(10, "Describe the issue in at least a few words.")
     .max(2000, "Please keep the description under 2000 characters."),
+  screenshot: screenshotSchema.optional(),
 });
 
 /** Inbound payload for the troubleshoot endpoint (Phase 3). */
@@ -81,4 +124,5 @@ export const troubleshootRequestSchema = z.object({
 export type DiagnosisInput = z.input<typeof diagnosisSchema>;
 export type Interpretation = z.infer<typeof interpretationSchema>;
 export type AnalyzeRequest = z.infer<typeof analyzeRequestSchema>;
+export type Screenshot = z.infer<typeof screenshotSchema>;
 export type TroubleshootRequest = z.infer<typeof troubleshootRequestSchema>;
