@@ -20,4 +20,9 @@ export interface SessionStore {
   list(limit?: number): Promise<TroubleshootingSession[]>;
 }
 
-export { memoryStore as sessionStore } from "./memory";
+/**
+ * In-process memory alone is not enough on serverless, where consecutive
+ * requests may land on different instances. The durable store keeps that fast
+ * path and carries the session in a cookie so it survives the hop.
+ */
+export { durableStore as sessionStore } from "./cookie";
