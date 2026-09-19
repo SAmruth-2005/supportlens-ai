@@ -1,0 +1,101 @@
+"use client";
+
+import { useState } from "react";
+import { ArrowRight, Info } from "lucide-react";
+import Link from "next/link";
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { DEMO_SCENARIOS } from "@/lib/demo/scenarios";
+import { analyzeRequestSchema } from "@/lib/schemas";
+
+export function IssueInput() {
+  const [issueText, setIssueText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState(false);
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setNotice(false);
+
+    const parsed = analyzeRequestSchema.safeParse({ issue_text: issueText });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Please check your input.");
+      return;
+    }
+
+    setError(null);
+    // The analyze endpoint is wired up in the next stage of the build.
+    setNotice(true);
+  }
+
+  return (
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-3" noValidate>
+        <label htmlFor="issue" className="block text-sm font-semibold">
+          Describe the problem
+        </label>
+        <Textarea
+          id="issue"
+          name="issue"
+          rows={5}
+          value={issueText}
+          onChange={(event) => setIssueText(event.target.value)}
+          placeholder="For example: I can browse public websites, but I cannot open one internal company application."
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? "issue-error" : "issue-hint"}
+          className="text-base"
+        />
+        <p id="issue-hint" className="text-muted-foreground text-sm">
+          Include what you expected, what happened instead, and any error text
+          you can see. Never paste passwords or API keys.
+        </p>
+        {error ? (
+          <p id="issue-error" role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        ) : null}
+
+        <Button
+          type="submit"
+          size="lg"
+          className="transition-[transform,box-shadow] duration-150 motion-safe:hover:-translate-y-px"
+        >
+          Start diagnosis
+          <ArrowRight aria-hidden="true" />
+        </Button>
+      </form>
+
+      {notice ? (
+        <Alert>
+          <Info aria-hidden="true" />
+          <AlertTitle>Live analysis is not connected yet</AlertTitle>
+          <AlertDescription>
+            Your description is valid and the interface is ready. The Gemini
+            analysis endpoint is the next part of the build. In the meantime,
+            open a worked example below to see the full troubleshooting flow.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <section aria-labelledby="examples" className="space-y-3">
+        <h2
+          id="examples"
+          className="text-muted-foreground font-mono text-[0.6875rem] tracking-[0.16em] uppercase"
+        >
+          Worked examples
+        </h2>
+        <ul className="flex flex-wrap gap-2">
+          {DEMO_SCENARIOS.map((scenario) => (
+            <li key={scenario.id}>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/session/${scenario.id}`}>{scenario.label}</Link>
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
